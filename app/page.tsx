@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 export default function Home() {
-  const audioRef = useRef(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [transcript, setTranscript] = useState("");
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState("en"); // 👈 default English
@@ -15,7 +15,9 @@ export default function Home() {
 
   const handlePlayAndTranscribe = async () => {
     // Play audio
-    audioRef!.current!.play();
+    if (audioRef.current) {
+      audioRef.current.play();
+    }
 
     // Send file to API
     setLoading(true);
