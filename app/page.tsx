@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 export default function Home() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [transcript, setTranscript] = useState("");
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState("en"); // 👈 default English
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
 
   // - mic recording state --
   const [recording, setRecording] = useState(false);
@@ -23,9 +25,16 @@ export default function Home() {
     setLoading(true);
     try {
       const formData = new FormData();
-      const response = await fetch("/cholesterol_bilirubin_high.m4a");
-      const blob = await response.blob();
-      formData.append("file", blob, "cholesterol_bilirubin_high.m4a");
+
+      if (selectedFile) {
+        // use the user-selected file directly
+        formData.append("file", selectedFile, selectedFile.name);
+      } else {
+        // fallback to the bundled audio
+        const response = await fetch("/cholesterol_bilirubin_high.m4a");
+        const blob = await response.blob();
+        formData.append("file", blob, "cholesterol_bilirubin_high.m4a");
+      }
       const res = await fetch("/api/transcribe", {
         method: "POST",
         headers: { "x-language": language },
@@ -40,6 +49,23 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // create and cleanup preview URL for selected file
+  useEffect(() => {
+    if (!selectedFile) {
+      setPreviewUrl("");
+      return;
+    }
+
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    setSelectedFile(f);
   };
 
   // Start mic recording (not realtime transcription)
@@ -110,6 +136,12 @@ export default function Home() {
 
       {/* Play & Transcribe (file) */}
       <div className="space-y-2">
+        <div className="flex items-center space-x-2">
+          <input type="file" accept="audio/*" onChange={onFileChange} />
+          {selectedFile && (
+            <span className="text-sm text-gray-700">{selectedFile.name}</span>
+          )}
+        </div>
         <button
           onClick={handlePlayAndTranscribe}
           className="px-4 py-2 bg-blue-600 text-white rounded"
@@ -117,7 +149,11 @@ export default function Home() {
         >
           {loading ? "Transcribing..." : "▶️ Play & Transcribe File"}
         </button>
-        <audio ref={audioRef} src="/cholesterol_bilirubin_high.m4a" />
+        <audio
+          ref={audioRef}
+          src={previewUrl || "/cholesterol_bilirubin_high.m4a"}
+          controls
+        />
       </div>
 
       {/* Record & Transcribe (mic) */}
